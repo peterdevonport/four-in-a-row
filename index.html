@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Four in a Row</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Four in a Row</h1>
+        <div class="difficulty">
+            <button class="diff-btn" data-diff="easy">Easy</button>
+            <button class="diff-btn active" data-diff="medium">Medium</button>
+            <button class="diff-btn" data-diff="hard">Hard</button>
+        </div>
+        <div id="status">Your turn! Click a column to drop your piece.</div>
+        <div id="board"></div>
+        <button id="new-game">New Game</button>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
