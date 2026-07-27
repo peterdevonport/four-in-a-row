@@ -7,6 +7,7 @@ const BOT = 2;
 let board = [];
 let gameOver = false;
 let botThinking = false;
+let processing = false;
 let difficulty = 'medium';
 let lastHoverCol = -1;
 
@@ -17,6 +18,8 @@ function initBoard() {
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
     gameOver = false;
     botThinking = false;
+    processing = false;
+    clearHover();
     statusEl.textContent = 'Your turn! Click a column to drop your piece.';
     statusEl.className = '';
     render();
@@ -165,18 +168,33 @@ function getBotMove() {
     return minimax(depth, -Infinity, Infinity, true).col;
 }
 
-function animateDrop(row, col) {
-    const cell = boardEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-    if (!cell) return;
-    const boardRect = boardEl.getBoundingClientRect();
-    const cellRect = cell.getBoundingClientRect();
-    const distFromTop = cellRect.top - boardRect.top;
-    cell.style.setProperty('--drop-dist', `${-(distFromTop + cellRect.height)}px`);
-    cell.classList.add('dropping');
-    cell.addEventListener('animationend', () => {
-        cell.classList.remove('dropping');
-        cell.style.removeProperty('--drop-dist');
-    }, { once: true });
+function animateColumnDrop(col, row, player, callback) {
+    const indicator = document.querySelector(`.indicator[data-col="${col}"]`);
+    const targetCell = boardEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    if (!indicator || !targetCell) { callback(); return; }
+
+    const indicatorRect = indicator.getBoundingClientRect();
+    const cellRect = targetCell.getBoundingClientRect();
+    const size = indicatorRect.width;
+
+    const piece = document.createElement('div');
+    piece.className = `falling-piece ${player === PLAYER ? 'player' : 'bot'}`;
+    piece.style.left = `${indicatorRect.left + indicatorRect.width / 2}px`;
+    piece.style.top = `${indicatorRect.top + indicatorRect.height / 2}px`;
+    piece.style.width = `${size}px`;
+    piece.style.height = `${size}px`;
+    piece.style.transform = 'translate(-50%, -50%)';
+    document.body.appendChild(piece);
+
+    const dx = cellRect.left - indicatorRect.left;
+    const dy = cellRect.top - indicatorRect.top;
+
+    const anim = piece.animate([
+        { transform: 'translate(-50%, -50%) translate(0, 0)', opacity: 1 },
+        { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px)`, opacity: 1 }
+    ], { duration: 350, easing: 'ease-in' });
+
+    anim.onfinish = () => { piece.remove(); callback(); };
 }
 
 function highlightWin(cells) {
@@ -203,88 +221,113 @@ function render() {
 }
 
 function clearHover() {
-    document.querySelectorAll('.cell.hover').forEach(el => el.classList.remove('hover'));
+    document.querySelectorAll('.indicator.active').forEach(el => el.classList.remove('active'));
     lastHoverCol = -1;
 }
 
-function handleCellClick(col) {
-    if (gameOver || botThinking) return;
-    if (!isValidMove(col)) return;
-    clearHover();
-    const row = dropPiece(col, PLAYER);
+function processMove(col, row, player) {
+    dropPiece(col, player);
     render();
-    animateDrop(row, col);
-    const winResult = checkWin(row, col, PLAYER);
+    const winResult = checkWin(row, col, player);
     if (winResult) {
         gameOver = true;
         highlightWin(winResult);
-        statusEl.textContent = 'You win!';
-        statusEl.className = 'win-text';
-        return;
+        if (player === PLAYER) {
+            statusEl.textContent = 'You win!';
+            statusEl.className = 'win-text';
+        } else {
+            statusEl.textContent = 'Bot wins!';
+            statusEl.className = 'lose-text';
+        }
+        return true;
     }
     if (isBoardFull()) {
         gameOver = true;
         statusEl.textContent = "It's a draw!";
         statusEl.className = 'draw-text';
-        return;
+        return true;
     }
-    botThinking = true;
-    statusEl.textContent = 'Bot is thinking...';
-    statusEl.className = 'thinking-text';
-    setTimeout(() => {
-        const botCol = getBotMove();
-        if (botCol === -1) {
-            botThinking = false;
-            gameOver = true;
-            statusEl.textContent = "It's a draw!";
-            statusEl.className = 'draw-text';
-            return;
-        }
-        const botRow = dropPiece(botCol, BOT);
-        render();
-        animateDrop(botRow, botCol);
-        const botWin = checkWin(botRow, botCol, BOT);
-        if (botWin) {
-            gameOver = true;
-            highlightWin(botWin);
-            statusEl.textContent = 'Bot wins!';
-            statusEl.className = 'lose-text';
-            botThinking = false;
-            return;
-        }
-        if (isBoardFull()) {
-            gameOver = true;
-            statusEl.textContent = "It's a draw!";
-            statusEl.className = 'draw-text';
-            botThinking = false;
-            return;
-        }
-        botThinking = false;
-        statusEl.textContent = 'Your turn!';
-        statusEl.className = '';
-    }, 500);
+    return false;
+}
+
+function handleCellClick(col) {
+    if (gameOver || botThinking || processing) return;
+    if (!isValidMove(col)) return;
+    clearHover();
+    processing = true;
+
+    const row = getDropRow(col);
+    animateColumnDrop(col, row, PLAYER, () => {
+        const ended = processMove(col, row, PLAYER);
+        if (ended) { processing = false; return; }
+
+        botThinking = true;
+        statusEl.textContent = 'Bot is thinking...';
+        statusEl.className = 'thinking-text';
+        setTimeout(() => {
+            const botCol = getBotMove();
+            if (botCol === -1) {
+                botThinking = false;
+                processing = false;
+                gameOver = true;
+                statusEl.textContent = "It's a draw!";
+                statusEl.className = 'draw-text';
+                return;
+            }
+            const botRow = getDropRow(botCol);
+            animateColumnDrop(botCol, botRow, BOT, () => {
+                const ended = processMove(botCol, botRow, BOT);
+                botThinking = false;
+                processing = false;
+                if (ended) return;
+                statusEl.textContent = 'Your turn!';
+                statusEl.className = '';
+            });
+        }, 500);
+    });
 }
 
 boardEl.addEventListener('mousemove', (e) => {
-    if (gameOver || botThinking) return;
+    if (gameOver || botThinking || processing) return;
     const cell = e.target.closest('.cell');
     if (!cell) return;
     const col = parseInt(cell.dataset.col);
     if (col === lastHoverCol) return;
     clearHover();
     lastHoverCol = col;
-    const dropRow = getDropRow(col);
-    if (dropRow === -1) return;
-    const dropCell = boardEl.querySelector(`.cell[data-row="${dropRow}"][data-col="${col}"]`);
-    if (dropCell) dropCell.classList.add('hover');
+    if (isValidMove(col)) {
+        const indicator = document.querySelector(`.indicator[data-col="${col}"]`);
+        if (indicator) indicator.classList.add('active');
+    }
 });
 
 boardEl.addEventListener('mouseleave', () => clearHover());
+
+document.querySelector('.indicators').addEventListener('mousemove', (e) => {
+    if (gameOver || botThinking || processing) return;
+    const indicator = e.target.closest('.indicator');
+    if (!indicator) return;
+    const col = parseInt(indicator.dataset.col);
+    if (col === lastHoverCol) return;
+    clearHover();
+    lastHoverCol = col;
+    if (isValidMove(col)) {
+        indicator.classList.add('active');
+    }
+});
+
+document.querySelector('.indicators').addEventListener('mouseleave', () => clearHover());
 
 boardEl.addEventListener('click', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
     handleCellClick(parseInt(cell.dataset.col));
+});
+
+document.querySelector('.indicators').addEventListener('click', (e) => {
+    const indicator = e.target.closest('.indicator');
+    if (!indicator) return;
+    handleCellClick(parseInt(indicator.dataset.col));
 });
 
 document.querySelectorAll('.diff-btn').forEach(btn => {
