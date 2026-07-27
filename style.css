@@ -80,6 +80,34 @@ h1 {
     border: 2px solid #0f1f33;
 }
 
+.board-wrapper {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.indicators {
+    display: grid;
+    grid-template-columns: repeat(7, 64px);
+    gap: 6px;
+    padding: 0 12px;
+    margin-bottom: 4px;
+}
+
+.indicator {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.indicator.active {
+    background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b);
+    box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 107, 107, 0.4);
+    transform: scale(1.05);
+}
+
 .cell {
     background: radial-gradient(circle at 50% 50%, #1a2d47, #0d1a2e);
     border-radius: 50%;
@@ -98,15 +126,6 @@ h1 {
     background: radial-gradient(circle at 35% 35%, #74b9ff, #2980b9);
     box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3);
     cursor: default;
-}
-
-#floating-piece {
-    position: fixed;
-    border-radius: 50%;
-    z-index: 100;
-    pointer-events: none;
-    background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b);
-    box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 107, 107, 0.4);
 }
 
 .falling-piece {
@@ -160,67 +179,6 @@ h1 {
     transform: scale(0.97);
 }
 
-.difficulty-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    transition: opacity 0.4s ease;
-}
-
-.difficulty-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.overlay-content {
-    background: white;
-    border-radius: 16px;
-    padding: 40px 48px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 90vw;
-}
-
-.overlay-content h2 {
-    font-size: 2rem;
-    color: #1a1a2e;
-    margin-bottom: 8px;
-}
-
-.overlay-content p {
-    color: #6b7280;
-    margin-bottom: 28px;
-    font-size: 1.1rem;
-}
-
-.overlay-difficulty {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-}
-
-.overlay-btn {
-    padding: 14px 32px !important;
-    font-size: 1.1rem !important;
-}
-
-.overlay-btn:hover {
-    border-color: #1a3a5c !important;
-    background: #f0f4ff !important;
-}
-
-.overlay-btn:active {
-    background: #1a3a5c !important;
-    color: white !important;
-    border-color: #1a3a5c !important;
-}
-
 @media (max-width: 550px) {
     #board {
         grid-template-columns: repeat(7, 44px);
@@ -228,10 +186,15 @@ h1 {
         gap: 4px;
         padding: 8px;
     }
+    .indicators {
+        grid-template-columns: repeat(7, 44px);
+        gap: 4px;
+        padding: 0 8px;
+    }
+    .indicator {
+        width: 44px;
+        height: 44px;
+    }
     h1 { font-size: 1.8rem; }
     .diff-btn { padding: 6px 16px; font-size: 0.9rem; }
-    .overlay-content { padding: 28px 24px; }
-    .overlay-content h2 { font-size: 1.5rem; }
-    .overlay-btn { padding: 12px 20px !important; font-size: 1rem !important; }
-    .overlay-difficulty { flex-direction: column; gap: 8px; }
 }
