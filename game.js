@@ -14,12 +14,55 @@ let lastHoverCol = -1;
 const boardEl = document.getElementById('board');
 const statusEl = document.getElementById('status');
 
+const floatingPiece = document.createElement('div');
+floatingPiece.id = 'floating-piece';
+document.body.appendChild(floatingPiece);
+
+function getColumnInfo(col) {
+    const cell = boardEl.querySelector(`.cell[data-row="0"][data-col="${col}"]`);
+    if (!cell) return null;
+    const cellRect = cell.getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
+    return {
+        centerX: cellRect.left + cellRect.width / 2,
+        aboveBoardY: boardRect.top - cellRect.height / 2 - 4,
+        width: cellRect.width,
+        height: cellRect.height
+    };
+}
+
+function showFloatingPiece(col) {
+    const info = getColumnInfo(col);
+    if (!info) return;
+    floatingPiece.style.width = `${info.width}px`;
+    floatingPiece.style.height = `${info.height}px`;
+    floatingPiece.style.left = `${info.centerX}px`;
+    floatingPiece.style.top = `${info.aboveBoardY}px`;
+    floatingPiece.style.transform = 'translate(-50%, -50%)';
+    floatingPiece.style.display = 'block';
+}
+
+function hideFloatingPiece() {
+    floatingPiece.style.display = 'none';
+    lastHoverCol = -1;
+}
+
+const overlay = document.getElementById('difficulty-overlay');
+
+function showOverlay() {
+    overlay.classList.remove('hidden');
+}
+
+function hideOverlay() {
+    overlay.classList.add('hidden');
+}
+
 function initBoard() {
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
     gameOver = false;
     botThinking = false;
     processing = false;
-    clearHover();
+    hideFloatingPiece();
     statusEl.textContent = 'Your turn! Click a column to drop your piece.';
     statusEl.className = '';
     render();
@@ -168,31 +211,51 @@ function getBotMove() {
     return minimax(depth, -Infinity, Infinity, true).col;
 }
 
-function animateColumnDrop(col, row, player, callback) {
-    const indicator = document.querySelector(`.indicator[data-col="${col}"]`);
+function animateFall(col, row, player, callback) {
     const targetCell = boardEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-    if (!indicator || !targetCell) { callback(); return; }
+    if (!targetCell) { callback(); return; }
+    const targetRect = targetCell.getBoundingClientRect();
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
 
-    const indicatorRect = indicator.getBoundingClientRect();
-    const cellRect = targetCell.getBoundingClientRect();
-    const size = indicatorRect.width;
+    let startX, startY, size;
+
+    if (player === PLAYER) {
+        startX = parseFloat(floatingPiece.style.left);
+        startY = parseFloat(floatingPiece.style.top);
+        size = parseFloat(floatingPiece.style.width) || targetRect.width;
+        hideFloatingPiece();
+        if (isNaN(startX) || isNaN(startY)) {
+            const info = getColumnInfo(col);
+            if (!info) { callback(); return; }
+            startX = info.centerX;
+            startY = info.aboveBoardY;
+            size = info.width;
+        }
+    } else {
+        const info = getColumnInfo(col);
+        if (!info) { callback(); return; }
+        startX = info.centerX;
+        startY = info.aboveBoardY;
+        size = info.width;
+    }
 
     const piece = document.createElement('div');
     piece.className = `falling-piece ${player === PLAYER ? 'player' : 'bot'}`;
-    piece.style.left = `${indicatorRect.left + indicatorRect.width / 2}px`;
-    piece.style.top = `${indicatorRect.top + indicatorRect.height / 2}px`;
+    piece.style.left = `${startX}px`;
+    piece.style.top = `${startY}px`;
     piece.style.width = `${size}px`;
     piece.style.height = `${size}px`;
     piece.style.transform = 'translate(-50%, -50%)';
     document.body.appendChild(piece);
 
-    const dx = cellRect.left - indicatorRect.left;
-    const dy = cellRect.top - indicatorRect.top;
+    const dx = targetCenterX - startX;
+    const dy = targetCenterY - startY;
 
     const anim = piece.animate([
-        { transform: 'translate(-50%, -50%) translate(0, 0)', opacity: 1 },
+        { transform: 'translate(-50%, -50%)', opacity: 1 },
         { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px)`, opacity: 1 }
-    ], { duration: 350, easing: 'ease-in' });
+    ], { duration: 400, easing: 'ease-in' });
 
     anim.onfinish = () => { piece.remove(); callback(); };
 }
@@ -218,11 +281,6 @@ function render() {
             boardEl.appendChild(cell);
         }
     }
-}
-
-function clearHover() {
-    document.querySelectorAll('.indicator.active').forEach(el => el.classList.remove('active'));
-    lastHoverCol = -1;
 }
 
 function processMove(col, row, player) {
@@ -253,11 +311,9 @@ function processMove(col, row, player) {
 function handleCellClick(col) {
     if (gameOver || botThinking || processing) return;
     if (!isValidMove(col)) return;
-    clearHover();
     processing = true;
-
     const row = getDropRow(col);
-    animateColumnDrop(col, row, PLAYER, () => {
+    animateFall(col, row, PLAYER, () => {
         const ended = processMove(col, row, PLAYER);
         if (ended) { processing = false; return; }
 
@@ -275,7 +331,7 @@ function handleCellClick(col) {
                 return;
             }
             const botRow = getDropRow(botCol);
-            animateColumnDrop(botCol, botRow, BOT, () => {
+            animateFall(botCol, botRow, BOT, () => {
                 const ended = processMove(botCol, botRow, BOT);
                 botThinking = false;
                 processing = false;
@@ -293,30 +349,17 @@ boardEl.addEventListener('mousemove', (e) => {
     if (!cell) return;
     const col = parseInt(cell.dataset.col);
     if (col === lastHoverCol) return;
-    clearHover();
+    hideFloatingPiece();
     lastHoverCol = col;
     if (isValidMove(col)) {
-        const indicator = document.querySelector(`.indicator[data-col="${col}"]`);
-        if (indicator) indicator.classList.add('active');
+        showFloatingPiece(col);
     }
 });
 
-boardEl.addEventListener('mouseleave', () => clearHover());
-
-document.querySelector('.indicators').addEventListener('mousemove', (e) => {
-    if (gameOver || botThinking || processing) return;
-    const indicator = e.target.closest('.indicator');
-    if (!indicator) return;
-    const col = parseInt(indicator.dataset.col);
-    if (col === lastHoverCol) return;
-    clearHover();
-    lastHoverCol = col;
-    if (isValidMove(col)) {
-        indicator.classList.add('active');
-    }
+boardEl.addEventListener('mouseleave', () => {
+    hideFloatingPiece();
+    lastHoverCol = -1;
 });
-
-document.querySelector('.indicators').addEventListener('mouseleave', () => clearHover());
 
 boardEl.addEventListener('click', (e) => {
     const cell = e.target.closest('.cell');
@@ -324,17 +367,22 @@ boardEl.addEventListener('click', (e) => {
     handleCellClick(parseInt(cell.dataset.col));
 });
 
-document.querySelector('.indicators').addEventListener('click', (e) => {
-    const indicator = e.target.closest('.indicator');
-    if (!indicator) return;
-    handleCellClick(parseInt(indicator.dataset.col));
-});
-
-document.querySelectorAll('.diff-btn').forEach(btn => {
+document.querySelectorAll('.difficulty .diff-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.difficulty .diff-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         difficulty = btn.dataset.diff;
+        initBoard();
+    });
+});
+
+document.querySelectorAll('.overlay-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        difficulty = btn.dataset.diff;
+        document.querySelectorAll('.difficulty .diff-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.diff === difficulty);
+        });
+        hideOverlay();
         initBoard();
     });
 });
@@ -342,3 +390,4 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
 document.getElementById('new-game').addEventListener('click', initBoard);
 
 initBoard();
+showOverlay();
