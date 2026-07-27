@@ -165,6 +165,20 @@ function getBotMove() {
     return minimax(depth, -Infinity, Infinity, true).col;
 }
 
+function animateDrop(row, col) {
+    const cell = boardEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    if (!cell) return;
+    const boardRect = boardEl.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    const distFromTop = cellRect.top - boardRect.top;
+    cell.style.setProperty('--drop-dist', `${-(distFromTop + cellRect.height)}px`);
+    cell.classList.add('dropping');
+    cell.addEventListener('animationend', () => {
+        cell.classList.remove('dropping');
+        cell.style.removeProperty('--drop-dist');
+    }, { once: true });
+}
+
 function highlightWin(cells) {
     cells.forEach(({ row, col }) => {
         const cell = boardEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
@@ -199,6 +213,7 @@ function handleCellClick(col) {
     clearHover();
     const row = dropPiece(col, PLAYER);
     render();
+    animateDrop(row, col);
     const winResult = checkWin(row, col, PLAYER);
     if (winResult) {
         gameOver = true;
@@ -227,6 +242,7 @@ function handleCellClick(col) {
         }
         const botRow = dropPiece(botCol, BOT);
         render();
+        animateDrop(botRow, botCol);
         const botWin = checkWin(botRow, botCol, BOT);
         if (botWin) {
             gameOver = true;

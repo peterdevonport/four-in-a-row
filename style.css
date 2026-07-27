@@ -117,6 +117,25 @@ h1 {
     position: relative;
 }
 
+.cell.dropping {
+    animation: dropPiece 0.35s ease-in;
+    z-index: 1;
+}
+
+@keyframes dropPiece {
+    0% {
+        transform: translateY(var(--drop-dist));
+        opacity: 0;
+    }
+    8% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 .cell.win {
     animation: winPulse 0.6s ease-in-out infinite alternate;
 }
