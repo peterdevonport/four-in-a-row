@@ -80,34 +80,6 @@ h1 {
     border: 2px solid #0f1f33;
 }
 
-.board-wrapper {
-    position: relative;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.indicators {
-    display: grid;
-    grid-template-columns: repeat(7, 64px);
-    gap: 6px;
-    padding: 0 12px;
-    margin-bottom: 4px;
-}
-
-.indicator {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
-}
-
-.indicator.active {
-    background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b);
-    box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 107, 107, 0.4);
-    transform: scale(1.05);
-}
-
 .cell {
     background: radial-gradient(circle at 50% 50%, #1a2d47, #0d1a2e);
     border-radius: 50%;
@@ -126,6 +98,15 @@ h1 {
     background: radial-gradient(circle at 35% 35%, #74b9ff, #2980b9);
     box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3);
     cursor: default;
+}
+
+#floating-piece {
+    position: fixed;
+    border-radius: 50%;
+    z-index: 100;
+    pointer-events: none;
+    background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b);
+    box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 14px rgba(255, 107, 107, 0.5);
 }
 
 .falling-piece {
