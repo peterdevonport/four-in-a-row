@@ -163,8 +163,10 @@ function minimax(depth, alpha, beta, isMaximizing) {
 function getBotMove() {
     const validMoves = getValidMoves();
     if (validMoves.length === 0) return -1;
-    if (difficulty === 'easy') return validMoves[Math.floor(Math.random() * validMoves.length)];
-    const depth = difficulty === 'medium' ? 4 : 6;
+    if (difficulty === 'easy') {
+        return validMoves[Math.floor(Math.random() * validMoves.length)];
+    }
+    const depth = difficulty === 'medium' ? 2 : 4;
     return minimax(depth, -Infinity, Infinity, true).col;
 }
 
